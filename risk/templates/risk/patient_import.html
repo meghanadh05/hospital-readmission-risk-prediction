@@ -1,0 +1,13 @@
+{% extends "risk/base.html" %}
+{% block content %}
+<div class="card" style="max-width:620px">
+ <h2>Import patients from CSV</h2>
+ <p>Required columns: <code>mrn</code>, <code>name</code>, <code>age</code>, and <code>gender</code>. Gender must be <code>Male</code> or <code>Female</code>.</p>
+ <p><a href="{% url 'patient_csv_template' %}">Download CSV template</a></p>
+ <form method="post" enctype="multipart/form-data">
+  {% csrf_token %}{{ form.as_p }}
+  <button class="btn" type="submit">Validate and import</button>
+  <a href="{% url 'patient_list' %}" style="margin-left:12px">Cancel</a>
+ </form>
+</div>
+{% endblock %}

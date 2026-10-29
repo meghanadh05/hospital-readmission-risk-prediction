@@ -1,10 +1,13 @@
 import io
 import json
+import csv
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,7 +16,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 from . import predictor
-from .forms import AdmissionForm, PatientForm
+from .forms import AdmissionForm, PatientCSVImportForm, PatientCSVRowForm, PatientForm
 from .models import Patient, Prediction
 
 FOLLOW_UP = {
@@ -58,6 +61,75 @@ def patient_list(request):
     if q:
         patients = patients.filter(Q(name__icontains=q) | Q(mrn__icontains=q))
     return render(request, "risk/patient_list.html", {"patients": patients, "q": q})
+
+
+@login_required
+def patient_import(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    form = PatientCSVImportForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            content = form.cleaned_data["file"].read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            form.add_error("file", "The CSV must be UTF-8 encoded.")
+        else:
+            reader = csv.DictReader(io.StringIO(content))
+            required = {"mrn", "name", "age", "gender"}
+            headers = set(reader.fieldnames or [])
+            if not required.issubset(headers):
+                missing = ", ".join(sorted(required - headers))
+                form.add_error("file", f"Missing required columns: {missing}.")
+            else:
+                rows, errors, seen = [], [], set()
+                for line_number, row in enumerate(reader, start=2):
+                    row_form = PatientCSVRowForm(row)
+                    mrn = (row.get("mrn") or "").strip()
+                    if mrn in seen:
+                        errors.append(f"Row {line_number}: duplicate MRN '{mrn}' in this file.")
+                    elif not row_form.is_valid():
+                        detail = "; ".join(
+                            f"{field}: {', '.join(messages)}"
+                            for field, messages in row_form.errors.items()
+                        )
+                        errors.append(f"Row {line_number}: {detail}")
+                    else:
+                        seen.add(mrn)
+                        rows.append(row_form.cleaned_data)
+
+                if not rows and not errors:
+                    errors.append("The CSV contains no patient rows.")
+                if errors:
+                    form.add_error("file", " ".join(errors[:10]))
+                else:
+                    created = updated = 0
+                    with transaction.atomic():
+                        for row in rows:
+                            _, was_created = Patient.objects.update_or_create(
+                                mrn=row["mrn"],
+                                defaults={
+                                    "name": row["name"],
+                                    "age": row["age"],
+                                    "gender": row["gender"],
+                                },
+                            )
+                            created += int(was_created)
+                            updated += int(not was_created)
+                    messages.success(request, f"CSV import complete: {created} created, {updated} updated.")
+                    return redirect("patient_list")
+    return render(request, "risk/patient_import.html", {"form": form})
+
+
+@login_required
+def patient_csv_template(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    response = HttpResponse(
+        "mrn,name,age,gender\nDEMO-001,Anita Rao,68,Female\nDEMO-002,Ravi Kumar,57,Male\n",
+        content_type="text/csv",
+    )
+    response["Content-Disposition"] = 'attachment; filename="patient_import_template.csv"'
+    return response
 
 
 @login_required

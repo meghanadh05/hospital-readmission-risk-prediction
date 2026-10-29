@@ -2,6 +2,8 @@ import json
 from io import StringIO
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -47,6 +49,51 @@ class PageTests(TestCase):
         self.assertEqual(report.status_code, 200)
         self.assertEqual(report["Content-Type"], "application/pdf")
         self.assertTrue(report.content.startswith(b"%PDF"))
+
+    def test_only_superuser_can_import_patient_csv(self):
+        user = get_user_model().objects.create_user("doctor", password="safe-test-password")
+        self.client.force_login(user)
+        upload = SimpleUploadedFile(
+            "patients.csv", b"mrn,name,age,gender\nD-001,Anita Rao,68,Female\n", "text/csv",
+        )
+        self.assertEqual(self.client.post(reverse("patient_import"), {"file": upload}).status_code, 403)
+        self.assertEqual(Patient.objects.count(), 0)
+
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@example.com", "safe-admin-password",
+        )
+        self.client.force_login(admin)
+        upload = SimpleUploadedFile(
+            "patients.csv",
+            b"mrn,name,age,gender\nD-001,Anita Rao,68,Female\nD-002,Ravi Kumar,57,Male\n",
+            "text/csv",
+        )
+        response = self.client.post(reverse("patient_import"), {"file": upload}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Patient.objects.count(), 2)
+        self.assertEqual(Patient.objects.get(mrn="D-001").name, "Anita Rao")
+
+        update = SimpleUploadedFile(
+            "patients.csv", b"mrn,name,age,gender\nD-001,Anita Updated,69,Female\n", "text/csv",
+        )
+        self.client.post(reverse("patient_import"), {"file": update})
+        self.assertEqual(Patient.objects.count(), 2)
+        self.assertEqual(Patient.objects.get(mrn="D-001").name, "Anita Updated")
+
+    def test_csv_import_is_atomic_when_a_row_is_invalid(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@example.com", "safe-admin-password",
+        )
+        self.client.force_login(admin)
+        upload = SimpleUploadedFile(
+            "patients.csv",
+            b"mrn,name,age,gender\nD-001,Valid Patient,68,Female\nD-002,Invalid Patient,999,Male\n",
+            "text/csv",
+        )
+        response = self.client.post(reverse("patient_import"), {"file": upload})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Patient.objects.count(), 0)
+        self.assertContains(response, "Ensure this value is less than or equal to 120")
 
 
 class HealthTests(TestCase):

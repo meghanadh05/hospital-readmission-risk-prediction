@@ -1,6 +1,7 @@
 {% extends "risk/base.html" %}
 {% block content %}
-<div class="card"><h2>Patients</h2>
+<div class="card"><div style="display:flex;align-items:center;gap:12px"><h2 style="flex:1">Patients</h2>
+{% if user.is_superuser %}<a class="btn" href="{% url 'patient_import' %}">Import CSV</a>{% endif %}</div>
 <form method="get" style="display:flex;gap:8px;margin-bottom:12px">
  <input name="q" value="{{ q }}" placeholder="Search name or MRN"><button class="btn">Search</button></form>
 <table><tr><th>MRN</th><th>Name</th><th>Age</th><th>Gender</th><th></th></tr>

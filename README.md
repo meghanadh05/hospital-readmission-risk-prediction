@@ -19,6 +19,8 @@ python manage.py runserver
 
 Open <http://127.0.0.1:8000>. The demo command creates `doctor` / `doctor123`; change or remove this account before deployment.
 
+On the deployed Patients page, a logged-in superuser can select **Import CSV** to create or update patients in bulk. A downloadable template documents the required `mrn,name,age,gender` columns. The whole file is validated before the import is committed.
+
 To enable the JSON API locally, export values based on `.env.example` and set a strong `READMISSION_API_KEY`. Django does not automatically load `.env` files.
 
 ## Prediction API
