@@ -10,3 +10,8 @@ staticfiles/
 *.doc
 *.docx
 ~$*.docx
+
+# Raw training datasets stay local; the trained model and metrics are versioned.
+ml/data/*.csv
+ml/data/*.pdf
+ml/data/av_healthcare/*.csv

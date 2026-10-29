@@ -1,14 +1,16 @@
 databases:
   - name: readmission-db
+    plan: free
     databaseName: readmission
     user: readmission
 
 services:
   - type: web
     name: hospital-readmission-risk
+    plan: free
     runtime: python
     buildCommand: ./build.sh
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120 --preload
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120 --preload
     initialDeployHook: python manage.py createsuperuser --noinput
     healthCheckPath: /health/
     envVars:
