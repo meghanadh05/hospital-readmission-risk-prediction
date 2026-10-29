@@ -17,7 +17,7 @@ from reportlab.pdfgen import canvas
 
 from . import predictor
 from .forms import AdmissionForm, PatientCSVImportForm, PatientCSVRowForm, PatientForm
-from .models import Patient, Prediction
+from .models import Admission, Patient, Prediction
 
 FOLLOW_UP = {
     "High": ["Phone call to the patient within 48 hours of discharge",
@@ -81,9 +81,19 @@ def patient_import(request):
                 missing = ", ".join(sorted(required - headers))
                 form.add_error("file", f"Missing required columns: {missing}.")
             else:
+                admission_headers = set(AdmissionForm().fields) - {"notes"}
+                supplied_admission_headers = admission_headers & headers
+                include_admissions = bool(supplied_admission_headers)
+                missing_admission_headers = admission_headers - headers if include_admissions else set()
+                if missing_admission_headers:
+                    missing = ", ".join(sorted(missing_admission_headers))
+                    form.add_error("file", f"Admission data is incomplete. Missing columns: {missing}.")
+                    return render(request, "risk/patient_import.html", {"form": form})
+
                 rows, errors, seen = [], [], set()
                 for line_number, row in enumerate(reader, start=2):
                     row_form = PatientCSVRowForm(row)
+                    admission_form = AdmissionForm(row) if include_admissions else None
                     mrn = (row.get("mrn") or "").strip()
                     if mrn in seen:
                         errors.append(f"Row {line_number}: duplicate MRN '{mrn}' in this file.")
@@ -93,29 +103,62 @@ def patient_import(request):
                             for field, messages in row_form.errors.items()
                         )
                         errors.append(f"Row {line_number}: {detail}")
+                    elif admission_form and not admission_form.is_valid():
+                        detail = "; ".join(
+                            f"{field}: {', '.join(messages)}"
+                            for field, messages in admission_form.errors.items()
+                        )
+                        errors.append(f"Row {line_number}: {detail}")
                     else:
                         seen.add(mrn)
-                        rows.append(row_form.cleaned_data)
+                        rows.append((
+                            row_form.cleaned_data,
+                            admission_form.cleaned_data if admission_form else None,
+                        ))
 
                 if not rows and not errors:
                     errors.append("The CSV contains no patient rows.")
                 if errors:
                     form.add_error("file", " ".join(errors[:10]))
                 else:
-                    created = updated = 0
+                    created = updated = admissions_created = admissions_updated = predictions = 0
                     with transaction.atomic():
-                        for row in rows:
-                            _, was_created = Patient.objects.update_or_create(
-                                mrn=row["mrn"],
+                        for patient_data, admission_data in rows:
+                            patient, was_created = Patient.objects.update_or_create(
+                                mrn=patient_data["mrn"],
                                 defaults={
-                                    "name": row["name"],
-                                    "age": row["age"],
-                                    "gender": row["gender"],
+                                    "name": patient_data["name"],
+                                    "age": patient_data["age"],
+                                    "gender": patient_data["gender"],
                                 },
                             )
                             created += int(was_created)
                             updated += int(not was_created)
-                    messages.success(request, f"CSV import complete: {created} created, {updated} updated.")
+                            if admission_data:
+                                admission_values = admission_data.copy()
+                                admitted_on = admission_values.pop("admitted_on")
+                                admission = Admission.objects.filter(
+                                    patient=patient, admitted_on=admitted_on,
+                                ).order_by("pk").first()
+                                if admission is None:
+                                    admission = Admission.objects.create(
+                                        patient=patient, admitted_on=admitted_on, **admission_values,
+                                    )
+                                    admissions_created += 1
+                                else:
+                                    for field, value in admission_values.items():
+                                        setattr(admission, field, value)
+                                    admission.save()
+                                    admissions_updated += 1
+                                predictor.run_for_admission(admission)
+                                predictions += 1
+                    result = f"CSV import complete: {created} patients created, {updated} updated."
+                    if include_admissions:
+                        result += (
+                            f" {admissions_created} admissions created, {admissions_updated} updated, "
+                            f"and {predictions} predictions calculated."
+                        )
+                    messages.success(request, result)
                     return redirect("patient_list")
     return render(request, "risk/patient_import.html", {"form": form})
 
@@ -125,7 +168,12 @@ def patient_csv_template(request):
     if not request.user.is_superuser:
         raise PermissionDenied
     response = HttpResponse(
-        "mrn,name,age,gender\nDEMO-001,Anita Rao,68,Female\nDEMO-002,Ravi Kumar,57,Male\n",
+        "mrn,name,age,gender,admitted_on,diag_group,admission_type,discharge_group,"
+        "time_in_hospital,num_lab_procedures,num_procedures,num_medications,number_outpatient,"
+        "number_emergency,number_inpatient,number_diagnoses,A1Cresult,max_glu_serum,change,"
+        "numchange,diabetesMed,notes\n"
+        "DEMO-001,Anita Rao,68,Female,2026-10-29,Diabetes,Emergency,Home,5,42,1,14,1,0,2,6,"
+        ">7,None,Ch,1,Yes,Fictional demo record\n",
         content_type="text/csv",
     )
     response["Content-Disposition"] = 'attachment; filename="patient_import_template.csv"'

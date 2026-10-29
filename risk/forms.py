@@ -10,8 +10,11 @@ class PatientForm(forms.ModelForm):
 
 class PatientCSVImportForm(forms.Form):
     file = forms.FileField(
-        label="Patient CSV file",
-        help_text="UTF-8 CSV, maximum 2 MB. Required columns: mrn, name, age, gender.",
+        label="Patient and admission CSV file",
+        help_text=(
+            "UTF-8 CSV, maximum 2 MB. Patient-only files require mrn, name, age and gender. "
+            "Use the downloadable template to create admissions and predictions too."
+        ),
     )
 
     def clean_file(self):

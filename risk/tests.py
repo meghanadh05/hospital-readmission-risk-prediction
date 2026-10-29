@@ -9,7 +9,7 @@ from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from .models import Patient, Prediction
+from .models import Admission, Patient, Prediction
 
 
 VALID_PAYLOAD = {
@@ -94,6 +94,45 @@ class PageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Patient.objects.count(), 0)
         self.assertContains(response, "Ensure this value is less than or equal to 120")
+
+    def test_extended_csv_creates_admission_and_prediction_idempotently(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@example.com", "safe-admin-password",
+        )
+        self.client.force_login(admin)
+        header = (
+            "mrn,name,age,gender,admitted_on,diag_group,admission_type,discharge_group,"
+            "time_in_hospital,num_lab_procedures,num_procedures,num_medications,"
+            "number_outpatient,number_emergency,number_inpatient,number_diagnoses,"
+            "A1Cresult,max_glu_serum,change,numchange,diabetesMed,notes\n"
+        )
+        row = (
+            "D-101,Demo Patient,68,Female,2026-10-29,Diabetes,Emergency,Home,5,42,1,14,"
+            "1,0,2,6,>7,None,Ch,1,Yes,Fictional record\n"
+        )
+
+        upload = SimpleUploadedFile("patients.csv", (header + row).encode(), "text/csv")
+        response = self.client.post(reverse("patient_import"), {"file": upload}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Patient.objects.count(), 1)
+        self.assertEqual(Admission.objects.count(), 1)
+        self.assertEqual(Prediction.objects.count(), 1)
+        self.assertContains(response, "1 predictions calculated")
+
+        upload = SimpleUploadedFile("patients.csv", (header + row).encode(), "text/csv")
+        self.client.post(reverse("patient_import"), {"file": upload})
+        self.assertEqual(Admission.objects.count(), 1)
+        self.assertEqual(Prediction.objects.count(), 1)
+
+    def test_csv_template_contains_admission_columns(self):
+        admin = get_user_model().objects.create_superuser(
+            "admin", "admin@example.com", "safe-admin-password",
+        )
+        self.client.force_login(admin)
+        response = self.client.get(reverse("patient_csv_template"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"admitted_on", response.content)
+        self.assertIn(b"number_inpatient", response.content)
 
 
 class HealthTests(TestCase):

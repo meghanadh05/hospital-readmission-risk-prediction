@@ -2,7 +2,8 @@
 {% block content %}
 <div class="card" style="max-width:620px">
  <h2>Import patients from CSV</h2>
- <p>Required columns: <code>mrn</code>, <code>name</code>, <code>age</code>, and <code>gender</code>. Gender must be <code>Male</code> or <code>Female</code>.</p>
+ <p>Patient-only CSV files require <code>mrn</code>, <code>name</code>, <code>age</code>, and <code>gender</code>. Gender must be <code>Male</code> or <code>Female</code>.</p>
+ <p>The downloadable template also contains admission fields. When those fields are supplied, the system creates the admission and calculates its readmission prediction automatically.</p>
  <p><a href="{% url 'patient_csv_template' %}">Download CSV template</a></p>
  <form method="post" enctype="multipart/form-data">
   {% csrf_token %}{{ form.as_p }}
