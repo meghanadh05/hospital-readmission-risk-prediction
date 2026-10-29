@@ -1,7 +1,9 @@
 import json
+from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
@@ -100,3 +102,20 @@ class ModelIntegrationTests(SimpleTestCase):
         self.assertIn(level, {"Low", "Medium", "High"})
         self.assertTrue(model_name)
         self.assertIsInstance(factors, list)
+
+
+class EnsureAdminTests(TestCase):
+    @patch.dict("os.environ", {
+        "DJANGO_SUPERUSER_USERNAME": "admin",
+        "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
+        "DJANGO_SUPERUSER_PASSWORD": "strong-test-password-123",
+    })
+    def test_command_creates_login_and_can_update_it(self):
+        output = StringIO()
+        call_command("ensure_admin", stdout=output)
+        user = get_user_model().objects.get(username="admin")
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.check_password("strong-test-password-123"))
+
+        call_command("ensure_admin", stdout=output)
+        self.assertEqual(get_user_model().objects.filter(username="admin").count(), 1)

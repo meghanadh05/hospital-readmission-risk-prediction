@@ -46,7 +46,7 @@ curl -X POST http://127.0.0.1:8000/api/v1/predict/ \
 
 ## Deploy
 
-The repository includes a Render Blueprint in `render.yaml`. Keep that file at the root of the Git repository, then [create a Blueprint in Render](https://render.com/docs/infrastructure-as-code). It explicitly uses Render's free web and PostgreSQL plans, installs dependencies, collects static files, runs migrations, and generates the production secret and API key. Render prompts for the administrator email and password, then creates that administrator once after the first successful deploy.
+The repository includes a Render Blueprint in `render.yaml`. Keep that file at the root of the Git repository, then [create a Blueprint in Render](https://render.com/docs/infrastructure-as-code). It explicitly uses Render's free web and PostgreSQL plans, installs dependencies, collects static files, runs migrations, and generates the production secret and API key. Render prompts for the administrator email and password. Every deployment safely creates or updates that administrator, so adding or changing the password and redeploying restores access.
 
 Render's free web service sleeps after 15 minutes without traffic and may take about one minute to wake. Its free PostgreSQL database expires after 30 days, so this configuration is intended for a project demonstration rather than permanent clinical use.
 
