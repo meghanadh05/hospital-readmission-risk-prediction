@@ -1,0 +1,10 @@
+Django>=5.2,<7
+dj-database-url>=2.2,<4
+gunicorn>=23,<24
+whitenoise>=6.8,<7
+psycopg[binary]>=3.2,<4
+scikit-learn==1.8.0
+xgboost>=2.1,<4
+pandas>=2.2,<4
+joblib>=1.4,<2
+reportlab>=4.2,<5

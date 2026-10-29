@@ -1,0 +1,13 @@
+{% extends "risk/base.html" %}
+{% block content %}
+<div class="card"><h2>Readmission risk - {{ pred.admission.patient.name }}</h2>
+<p class="big">{{ pct }}% <span class="badge {{ pred.risk_level }}">{{ pred.risk_level }} risk</span></p>
+<p>Predicted by <b>{{ pred.model_name }}</b> &middot; admission {{ pred.admission.admitted_on }}</p>
+<a class="btn" href="{% url 'report_pdf' pred.pk %}" target="_blank">Download PDF report</a>
+<a href="{% url 'patient_detail' pred.admission.patient.pk %}" style="margin-left:12px">Back to patient</a></div>
+<div class="grid">
+<div class="card"><h3>Why this score</h3>
+{% for f in pred.factors %}<p>{{ f.feature }} <b>+{{ f.impact }} pts</b></p>{% empty %}<p>No single dominant factor.</p>{% endfor %}</div>
+<div class="card"><h3>Suggested follow-up</h3><ul>{% for s in follow_up %}<li>{{ s }}</li>{% endfor %}</ul></div>
+</div>
+{% endblock %}

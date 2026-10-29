@@ -1,0 +1,10 @@
+{% extends "risk/base.html" %}
+{% block content %}
+<div class="card"><h2>Patients</h2>
+<form method="get" style="display:flex;gap:8px;margin-bottom:12px">
+ <input name="q" value="{{ q }}" placeholder="Search name or MRN"><button class="btn">Search</button></form>
+<table><tr><th>MRN</th><th>Name</th><th>Age</th><th>Gender</th><th></th></tr>
+{% for p in patients %}<tr><td>{{ p.mrn }}</td><td>{{ p.name }}</td><td>{{ p.age }}</td><td>{{ p.gender }}</td>
+<td><a href="{% url 'patient_detail' p.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="5">No patients found.</td></tr>{% endfor %}</table></div>
+{% endblock %}

@@ -1,0 +1,80 @@
+{
+  "source": "Kaggle diabetes 130-US hospitals (diabetic_data.csv)",
+  "best": "XGBoost",
+  "selection_metric": "held-out ROC-AUC",
+  "results": {
+    "Logistic Regression": {
+      "roc_auc": 0.6296,
+      "pr_auc": 0.1464,
+      "cv_roc_auc": 0.6376,
+      "recall": 0.506,
+      "precision": 0.1339,
+      "f1": 0.2118,
+      "brier_score": 0.2344,
+      "training_seconds": 0.82,
+      "inference_ms_per_patient": 0.0009,
+      "confusion_matrix": {
+        "tn": 8709,
+        "fp": 4119,
+        "fn": 622,
+        "tp": 637
+      }
+    },
+    "Random Forest": {
+      "roc_auc": 0.6359,
+      "pr_auc": 0.1482,
+      "cv_roc_auc": 0.6318,
+      "recall": 0.1048,
+      "precision": 0.2075,
+      "f1": 0.1393,
+      "brier_score": 0.12,
+      "training_seconds": 9.18,
+      "inference_ms_per_patient": 0.0074,
+      "confusion_matrix": {
+        "tn": 12324,
+        "fp": 504,
+        "fn": 1127,
+        "tp": 132
+      }
+    },
+    "XGBoost": {
+      "roc_auc": 0.6444,
+      "pr_auc": 0.1523,
+      "cv_roc_auc": 0.6404,
+      "recall": 0.5163,
+      "precision": 0.1372,
+      "f1": 0.2167,
+      "brier_score": 0.2211,
+      "training_seconds": 3.08,
+      "inference_ms_per_patient": 0.0012,
+      "confusion_matrix": {
+        "tn": 8739,
+        "fp": 4089,
+        "fn": 609,
+        "tp": 650
+      },
+      "calibrated_roc_auc": 0.645,
+      "calibrated_pr_auc": 0.1533,
+      "calibrated_brier_score": 0.0794
+    }
+  },
+  "tiers": {
+    "Low": {
+      "patients": 7043,
+      "observed_readmit_rate": 0.0561
+    },
+    "Medium": {
+      "patients": 4931,
+      "observed_readmit_rate": 0.1004
+    },
+    "High": {
+      "patients": 2113,
+      "observed_readmit_rate": 0.1746
+    }
+  },
+  "thresholds": [
+    0.0798,
+    0.1326
+  ],
+  "base_rate": 0.0894
+}

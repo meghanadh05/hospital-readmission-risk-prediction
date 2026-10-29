@@ -1,0 +1,12 @@
+{% extends "risk/base.html" %}
+{% block content %}
+<div class="card"><h2>{{ patient.name }}</h2>
+<p>MRN {{ patient.mrn }} &middot; {{ patient.age }} yrs &middot; {{ patient.gender }}</p>
+<a class="btn" href="{% url 'admission_create' patient.pk %}">+ New admission &amp; risk prediction</a></div>
+<div class="card"><h3>Admission history</h3>
+<table><tr><th>Date</th><th>Diagnosis</th><th>Days</th><th>Risk</th><th></th></tr>
+{% for a in admissions %}<tr><td>{{ a.admitted_on }}</td><td>{{ a.diag_group|default:"-" }}</td><td>{{ a.time_in_hospital }}</td>
+<td>{% if a.prediction %}<span class="badge {{ a.prediction.risk_level }}">{{ a.prediction.risk_level }}</span> {% widthratio a.prediction.probability 1 100 %}%{% endif %}</td>
+<td>{% if a.prediction %}<a href="{% url 'prediction_detail' a.prediction.pk %}">View</a>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="5">No admissions yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

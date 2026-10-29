@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Readmission Risk{% endblock %}</title>
+<style>
+ body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;background:#f4f6f9;color:#1c2733}
+ nav{background:#0b4f6c;color:#fff;padding:12px 24px;display:flex;gap:18px;align-items:center}
+ nav a{color:#fff;text-decoration:none} nav .sp{flex:1} nav form{margin:0}
+ nav button{background:none;border:1px solid #fff8;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer}
+ main{max-width:1000px;margin:24px auto;padding:0 16px}
+ .card{background:#fff;border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 1px 3px #0001}
+ .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+ .big{font-size:2rem;font-weight:700} table{width:100%;border-collapse:collapse}
+ th,td{text-align:left;padding:8px;border-bottom:1px solid #e6eaef}
+ .badge{padding:2px 10px;border-radius:12px;color:#fff;font-size:.85rem}
+ .High{background:#c0392b}.Medium{background:#e67e22}.Low{background:#2e8b57}
+ .btn{display:inline-block;background:#0b4f6c;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;border:0;cursor:pointer}
+ input,select,textarea{padding:7px;border:1px solid #c9d1da;border-radius:6px;width:100%;box-sizing:border-box}
+ .msg{background:#e6f4ea;padding:10px;border-radius:6px;margin-bottom:12px}
+ .errorlist{color:#c0392b;margin:0;padding-left:16px} p label{display:block;font-weight:600;margin-bottom:3px}
+</style></head><body>
+<nav><b>Readmission Risk</b>
+{% if user.is_authenticated %}
+ <a href="{% url 'dashboard' %}">Dashboard</a><a href="{% url 'patient_list' %}">Patients</a>
+ <a href="{% url 'patient_create' %}">+ Patient</a>{% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}<span class="sp"></span>
+ <span>{{ user.username }}</span>
+ <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
+{% endif %}</nav>
+<main>
+{% for m in messages %}<div class="msg">{{ m }}</div>{% endfor %}
+{% block content %}{% endblock %}
+</main></body></html>

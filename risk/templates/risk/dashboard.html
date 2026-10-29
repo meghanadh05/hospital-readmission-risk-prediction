@@ -1,0 +1,35 @@
+{% extends "risk/base.html" %}
+{% block content %}
+<div class="grid">
+ <div class="card"><div>Patients</div><div class="big">{{ total_patients }}</div></div>
+ <div class="card"><div>Predictions made</div><div class="big">{{ total_preds }}</div></div>
+ <div class="card"><div>High-risk patients</div><div class="big" style="color:#c0392b">{{ high_count }}</div></div>
+</div>
+<div class="grid">
+ <div class="card"><h3>Risk distribution</h3><canvas id="dist" height="200"></canvas></div>
+ <div class="card"><h3>High-risk cases (last 14 days)</h3><canvas id="trend" height="200"></canvas></div>
+</div>
+<div class="card"><h3>Highest-risk patients - plan follow-up</h3>
+<table><tr><th>Patient</th><th>Diagnosis</th><th>Risk</th><th></th></tr>
+{% for p in high_risk %}<tr><td>{{ p.admission.patient.name }}</td><td>{{ p.admission.diag_group|default:"-" }}</td>
+<td><span class="badge High">{% widthratio p.probability 1 100 %}%</span></td>
+<td><a href="{% url 'prediction_detail' p.pk %}">Details</a> &middot; <a href="{% url 'report_pdf' p.pk %}" target="_blank">PDF</a></td></tr>
+{% empty %}<tr><td colspan="4">No high-risk patients yet.</td></tr>{% endfor %}</table></div>
+{% if metrics %}<div class="card"><h3>Model comparison</h3>
+<p style="font-size:.85rem;color:#556">Data: {{ metrics.source }} &middot; Best model: <b>{{ metrics.best }}</b></p>
+<table><tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th><th>Recall</th><th>Precision</th><th>F1</th></tr>
+{% for name, m in metrics.results.items %}<tr><td>{{ name }}{% if name == metrics.best %} <b>(selected)</b>{% endif %}</td><td>{{ m.roc_auc }}</td><td>{{ m.pr_auc }}</td><td>{{ m.recall }}</td><td>{{ m.precision }}</td><td>{{ m.f1 }}</td></tr>{% endfor %}</table>
+{% if metrics.tiers %}<h4>Risk tiers (held-out test data; overall readmission rate {% widthratio metrics.base_rate 1 100 %}%)</h4>
+<table><tr><th>Tier</th><th>Patients</th><th>Actual 30-day readmission rate</th></tr>
+{% for t, v in metrics.tiers.items %}<tr><td><span class="badge {{ t }}">{{ t }}</span></td><td>{{ v.patients }}</td><td>{% widthratio v.observed_readmit_rate 1 100 %}%</td></tr>{% endfor %}</table>{% endif %}</div>{% endif %}
+{{ chart|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+ const d = JSON.parse(document.getElementById('chart-data').textContent);
+ new Chart(document.getElementById('dist'), {type:'doughnut',
+   data:{labels:['Low','Medium','High'],datasets:[{data:d.dist,backgroundColor:['#2e8b57','#e67e22','#c0392b']}]}});
+ new Chart(document.getElementById('trend'), {type:'line',
+   data:{labels:d.days,datasets:[{label:'High-risk',data:d.trend,borderColor:'#c0392b',tension:.3}]},
+   options:{scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+</script>
+{% endblock %}
